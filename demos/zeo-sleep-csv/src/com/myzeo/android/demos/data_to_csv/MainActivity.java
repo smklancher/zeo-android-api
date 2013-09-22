@@ -14,6 +14,9 @@
  * limitations under the License.
  */
 
+ //SMK - added headbandStatus, sleepRecordDetailByID, and mostRecentSleepEventID
+		these are used to display status of the headband and most recent sleep event.
+ 
 package com.myzeo.android.demos.data_to_csv;
 
 import static com.myzeo.android.api.data.ZeoDataContract.SleepRecord;
@@ -37,6 +40,9 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
 import java.io.Writer;
+
+import com.myzeo.android.api.data.ZeoDataContract.Headband;
+import com.myzeo.android.api.data.ZeoDataContract.SleepEpisode;
 
 /**
  * Main entry point for the zeo CSV generator software.
@@ -108,10 +114,222 @@ public class MainActivity extends Activity {
 
         TextView csvText = (TextView) findViewById(R.id.csv_data);
         mSleepCsv = buildCsv();
+		//SMK - get status of the headband and most recent sleep event
+        String status = headbandStatus() + "\n" + sleepRecordDetailByID(mostRecentSleepEventID());
         if (mSleepCsv != null) {
-            csvText.setText(mSleepCsv);
+            csvText.setText(status);
         }
     }
+    
+    //SMK - return some information about the current status of the headband
+    private String headbandStatus() {
+    	String[] projection = new String[] {
+                Headband.ALGORITHM_MODE,
+                Headband.BLUETOOTH_ADDRESS,
+                Headband.BLUETOOTH_FRIENDLY_NAME,
+                Headband.BONDED,
+                Headband.CLOCK_OFFSET,
+                Headband.CONNECTED,
+                Headband.CREATED_ON,
+                Headband.DOCKED,
+                Headband.ON_HEAD,
+                Headband.SW_VERSION,
+                Headband.UPDATED_ON
+            };
+    	
+    	final Cursor cursor = getContentResolver().query(Headband.CONTENT_URI,
+                projection, null, null, null);
+		if (cursor == null) {
+			Log.w(TAG, "Cursor was null; something is wrong; perhaps Zeo not installed.");
+			Toast.makeText(this, "Unable to access Zeo data provider, is Zeo installed?",
+					Toast.LENGTH_LONG).show();
+			return null;
+		}
+		
+		java.util.Date tempdate;
+		
+		StringBuilder builder = new StringBuilder();
+        if (cursor.moveToFirst()) {
+            builder.append("Headband Status\n");
+
+            do {
+                // Begin writing data.
+            	builder.append(Headband.ALGORITHM_MODE + ": " + 
+                        cursor.getInt(cursor.getColumnIndex(Headband.ALGORITHM_MODE)) + "\n");
+            	builder.append(Headband.BLUETOOTH_ADDRESS + ": " + 
+                        cursor.getString(cursor.getColumnIndex(Headband.BLUETOOTH_ADDRESS)) + "\n");
+            	builder.append(Headband.BLUETOOTH_FRIENDLY_NAME + ": " + 
+                        cursor.getString(cursor.getColumnIndex(Headband.BLUETOOTH_FRIENDLY_NAME)) + "\n");
+            	builder.append(Headband.BONDED + ": " + 
+                        cursor.getInt(cursor.getColumnIndex(Headband.BONDED)) + "\n");;
+            	builder.append(Headband.CLOCK_OFFSET + ": " + 
+                        cursor.getLong(cursor.getColumnIndex(Headband.CLOCK_OFFSET)) + "\n");
+            	
+
+            	tempdate=new java.util.Date(cursor.getLong(cursor.getColumnIndex(Headband.CREATED_ON)));
+                builder.append(Headband.CREATED_ON + ": " + tempdate.toString() +"\n");
+                
+            	builder.append(Headband.CONNECTED + ": " + 
+                        cursor.getInt(cursor.getColumnIndex(Headband.CONNECTED)) + "\n");
+            	builder.append(Headband.DOCKED + ": " + 
+                        cursor.getInt(cursor.getColumnIndex(Headband.DOCKED)) + "\n");
+            	builder.append(Headband.ON_HEAD + ": " + 
+                        cursor.getInt(cursor.getColumnIndex(Headband.ON_HEAD)) + "\n");
+            	builder.append(Headband.SW_VERSION + ": " + 
+                        cursor.getString(cursor.getColumnIndex(Headband.SW_VERSION)) + "\n");
+            	
+
+            	tempdate=new java.util.Date(cursor.getLong(cursor.getColumnIndex(Headband.UPDATED_ON)));
+                builder.append(Headband.UPDATED_ON + ": " + tempdate.toString() +"\n");
+                    
+                
+            } while (cursor.moveToNext());
+
+        } else {
+            Log.w(TAG, "No sleep records found.");
+            Toast.makeText(this, "No sleep records found in the provider.",
+                           Toast.LENGTH_SHORT).show();
+        }
+        cursor.close();
+        return builder.toString();
+    }
+    
+    
+    
+    //SMK - return information about the sleep event indicated by ID
+    private String sleepRecordDetailByID(int ID) {
+    	String[] projection = new String[] {
+                SleepRecord.LOCALIZED_START_OF_NIGHT,
+                SleepRecord.START_OF_NIGHT,
+                SleepRecord.END_OF_NIGHT,
+                SleepRecord.TIMEZONE,
+                SleepRecord.ZQ_SCORE,
+                SleepRecord.AWAKENINGS,
+                SleepRecord.TIME_IN_DEEP,
+                SleepRecord.TIME_IN_LIGHT,
+                SleepRecord.TIME_IN_REM,
+                SleepRecord.TIME_IN_WAKE,
+                SleepRecord.TIME_TO_Z,
+                SleepRecord.TOTAL_Z,
+                SleepRecord.SOURCE,
+                SleepRecord.END_REASON,
+                SleepRecord.BASE_HYPNOGRAM
+            };
+
+            final Cursor cursor = getContentResolver().query(SleepRecord.CONTENT_URI,
+                                                             projection, SleepRecord.SLEEP_EPISODE_ID + "=?", new String[] {Integer.toString(ID)}, null);
+            if (cursor == null) {
+                Log.w(TAG, "Cursor was null; something is wrong; perhaps Zeo not installed.");
+                Toast.makeText(this, "Unable to access Zeo data provider, is Zeo installed?",
+                               Toast.LENGTH_LONG).show();
+                return null;
+            }
+
+            java.util.Date tempdate;
+            
+            StringBuilder builder = new StringBuilder();
+            if (cursor.moveToFirst()) {
+                builder.append("\n");
+
+	            	tempdate=new java.util.Date(cursor.getLong(cursor.getColumnIndex(SleepRecord.LOCALIZED_START_OF_NIGHT)));
+	                builder.append(SleepRecord.LOCALIZED_START_OF_NIGHT + ": " + tempdate.toString() +"\n");
+	
+	            	tempdate=new java.util.Date(cursor.getLong(cursor.getColumnIndex(SleepRecord.START_OF_NIGHT)));
+	                builder.append(SleepRecord.START_OF_NIGHT + ": " + tempdate.toString() +"\n");
+	
+	            	tempdate=new java.util.Date(cursor.getLong(cursor.getColumnIndex(SleepRecord.END_OF_NIGHT)));
+	                builder.append(SleepRecord.END_OF_NIGHT + ": " + tempdate.toString() +"\n");
+	                
+                    builder.append(SleepRecord.ZQ_SCORE + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.ZQ_SCORE)) + "\n");
+                    builder.append(SleepRecord.AWAKENINGS + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.AWAKENINGS)) + "\n");
+                    builder.append(SleepRecord.TIME_IN_DEEP + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TIME_IN_DEEP)) +
+                                   "\n");
+                    builder.append(SleepRecord.TIME_IN_LIGHT + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TIME_IN_LIGHT)) +
+                                   "\n");
+                    builder.append(SleepRecord.TIME_IN_REM + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TIME_IN_REM)) + "\n");
+                    builder.append(SleepRecord.TIME_IN_WAKE + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TIME_IN_WAKE)) +
+                                   "\n");
+                    builder.append(SleepRecord.TIME_TO_Z + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TIME_TO_Z)) + "\n");
+                    builder.append(SleepRecord.TOTAL_Z + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.TOTAL_Z)) + "\n");
+                    builder.append(SleepRecord.SOURCE + ": " + cursor.getInt(cursor.getColumnIndex(SleepRecord.SOURCE)) + "\n");
+                    int reason=cursor.getInt(cursor.getColumnIndex(SleepRecord.END_REASON));
+                    String reasonStr = "Unknown";
+                    
+                    switch (reason) {
+	                    case 0:	reasonStr="Complete record";
+	                    	break;
+	
+	                    case 1:	reasonStr="Record is still active";
+	                    	break;
+	
+	                    case 2:	reasonStr="Headband battery died";
+	                    	break;
+	
+	                    case 3:	reasonStr="Headband disconnected";
+	                    	break;
+	
+	                    case 4:	reasonStr="Service was killed on Android device";
+	                    	break;
+                
+                    }
+
+                    builder.append(SleepRecord.END_REASON + ": " + reasonStr + "\n");
+                    
+                    builder.append(SleepRecord.BASE_HYPNOGRAM + ": \n");
+                    
+                    
+                    final byte[] baseHypnogram =
+                        cursor.getBlob(cursor.getColumnIndex(SleepRecord.BASE_HYPNOGRAM));
+                    for (byte stage : baseHypnogram) {
+                        builder.append(Byte.toString(stage));
+                    }
+                
+                    builder.append("\n");
+
+            } else {
+                Log.w(TAG, "No sleep records found.");
+                Toast.makeText(this, "No sleep records found in the provider.",
+                               Toast.LENGTH_SHORT).show();
+            }
+            cursor.close();
+            return builder.toString();
+    }
+    
+    
+    
+
+    //SMK - return the ID for the most recent sleep event, to be used by sleepRecordDetailByID.
+    private int mostRecentSleepEventID() {
+    	String[] projection = new String[] {
+                SleepEpisode._ID,
+                SleepEpisode.START_TIMESTAMP
+            };
+    	
+    	final Cursor cursor = getContentResolver().query(SleepEpisode.CONTENT_URI,
+                projection, null, null, SleepEpisode.START_TIMESTAMP + " DESC");
+		if (cursor == null) {
+			Log.w(TAG, "Cursor was null; something is wrong; perhaps Zeo not installed.");
+			Toast.makeText(this, "Unable to access Zeo data provider, is Zeo installed?",
+					Toast.LENGTH_LONG).show();
+			return -1;
+		}
+		
+        if (cursor.moveToFirst()) {
+        	int ID= cursor.getInt(cursor.getColumnIndex(SleepEpisode._ID));
+            cursor.close();
+            return ID;
+
+        } else {
+            Log.w(TAG, "No sleep records found.");
+            Toast.makeText(this, "No sleep records found in the provider.",
+                           Toast.LENGTH_SHORT).show();
+            cursor.close();
+        }
+        
+        return -1;
+    }
+    
+    
 
     /**
      * Method queries the Zeo data provider; extracts some notable fields and builds a CSV string
@@ -210,7 +428,8 @@ public class MainActivity extends Activity {
      * Write given CSV data to Android external storage using the given filename. Return the file
      * created to the caller if data was successfully written.
      */
-    private File writeCsvFile(String csvData, String filename) {
+    @SuppressWarnings("unused")
+	private File writeCsvFile(String csvData, String filename) {
         final String storageState =
             Environment.getExternalStorageState();
         if (!Environment.MEDIA_MOUNTED.equals(storageState) ||
